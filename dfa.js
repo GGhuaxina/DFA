@@ -1,101 +1,150 @@
-var fs = require('fs');
-// 创建敏感词库哈希表
-var map = {};
+let fs = require('fs');
 
-/**
- * 创建树节点
- * @param {String，汉字} word 
- * @param {Number, 0:继续  1:结束} flag 
- * @param {Object, 孩子节点集} nodes 
- * @return {Object, 树节点} node
- */
-function tNode(word,flag,nodes) {
-    var node = {};
-    node.word = word || '';
-    flag < 0 ? node.flag = 0 : node.flag = 1;
-    node.nodes = nodes || {};
-    return node;
-}
+// create sw hash
+let map = {};
 
-/**
- * 构建树结构，并添加敏感语句
- * @param {String, 敏感语句} sentences 
- */
-function addWord(sentences) {
-    var len = sentences.length;
-    // 英文全部范化成小写
-    sentences = sentences.toLowerCase();
+class SWF {
+    constructor () {}
 
-    // 初始化根节点
-    var rootNode = sentences.charAt(0);
-    // 单个词情况
-    if(len===1){
-        map[rootNode] = tNode(rootNode,1,{});
-        return ;
+    /**
+     * create tree node
+     * @param {String，sensitive words} word 
+     * @param {Number, if flag===1, done} flag 
+     * @param {Object, childs} nodes 
+     * @return {Object, TNode} node
+    */
+    createTNode (word, flag, nodes) {
+        let node = {};
+        node.word = word || '';
+        flag < 0 ? node.flag = 0 : node.flag = 1;
+        node.nodes = nodes || {};
+        return node;
     }
 
-    if(!map[rootNode])
-        map[rootNode] = tNode(rootNode,0,{});
+    /**
+     * add sw in the tree
+     * @param {String, sensitive words} sentences 
+    */
+    addWord (sentences) {
+        if(!sentences) return;
+        let len = sentences.length;
+        sentences = sentences.toLowerCase();
+    
+        // init rootNode
+        let rootNode = sentences.charAt(0);
 
-    var _map = map[rootNode]; 
-    for(var i=1; i<len; i++) {
-        var _pre = sentences.charAt(i-1);
-        var _cur = sentences.charAt(i);
-        // 构建树结构
-        var _node = tNode(_cur,i-len+1,{});
-        _map.nodes[_cur] = _node;
-        _map = _map.nodes[_cur];
+        if(len===1){
+            map[rootNode] = this.createTNode(rootNode,1,{});
+            return ;
+        }
+    
+        if(!map[rootNode])
+            map[rootNode] = this.createTNode(rootNode,0,{});
+    
+        let _map = map[rootNode]; 
+
+        for(let i=1; i<len; i++) {
+            let _pre = sentences.charAt(i-1),
+                _cur = sentences.charAt(i),
+                _node = this.createTNode(_cur,i-len+1,{});
+
+            _map.nodes[_cur] = _node;
+            _map = _map.nodes[_cur];
+        }
     }
-}
+    builtSWL (filePath) {
 
-/**
- * 过滤敏感词，并替换成 *
- * @param {String, 待过滤语句} sentence 
- */
-function filter(sentence) {
-    var len = sentence.length;
-    var _map = map;
-    sentence = sentence.toLowerCase().split('');
+        // if users would't built their own libs 
+        filePath === void 0 ? filePath = './sw.txt' : 1;
 
-    for(var i=0; i<len; i++) {
-        var w = sentence[i];
-        // 判断首词是否在敏感词map中
-        if(_map[w]) {
-            // 状态转移
-            var curMap = _map[w];
-            for(var j=i+1; j<len; ) {
-                // 下一个词
-                var nw = sentence[j];
-                if(curMap.nodes[nw]) {
-                    // 判断状态是否结束
-                    if(curMap.nodes[nw].flag === 1) {
-                        for(i;i<=j;i++)
-                            sentence[i] = '*';
+        let data = fs.readFileSync(filePath);
 
-                        // 从j位置开始重新匹配
-                        i = j;
+        // if linux, please use next line 
+        // let datas = data.toString().split('\n');
+        let datas = data.toString().split('\r\n');
+
+        for(let w=0, len=datas.length; w<len; w++) 
+            this.addWord(datas[w]);
+    }
+   
+    /**
+     * filter and replace it by "*" 
+     * @param {String, your sentence} sentence 
+    */
+    filter (sentence) {
+
+        if(!sentence) return -1;
+        let len = sentence.length;
+        let m = map;
+        sentence = sentence.toLowerCase().split('');
+    
+        for(let i=0; i<len; i++) {
+            let w = sentence[i];
+            if(m[w]) {
+                // state transition
+                let curState = m[w];
+                for(let j=i+1; j<len; ) {
+                    // next word
+                    let nw = sentence[j];
+                    if(curState.nodes[nw]) {
+                        // if it matches a sensitive word
+                        if(curState.nodes[nw].flag === 1) {
+
+                            for(i;i<=j;i++)
+                                sentence[i] = '*';
+
+                            // continue to judge until i equals len
+                            i = j;
+                            break;
+                        }else{
+                            curState = curState.nodes[nw];
+                            j++;
+                        }
+                    }else {
                         break;
-                    }else{
-                        curMap = curMap.nodes[nw];
-                        j++;
                     }
-                }else {
-                    break;
                 }
             }
         }
+        return sentence.join('');
     }
-    return sentence.join('');
+
 }
 
-// 将敏感词库导入并建立树结构
-var fs = require("fs");
-function bulitSW(filePath) {
-    var data = fs.readFileSync(filePath);
-    // linux环境下则需改为 .split('\n')
-    var datas = data.toString().split('\r\n');
-    for(var w=0, len=datas.length; w<len; w++) 
-        addWord(datas[w]);
-}
+// example
+// let test = new SWF();
+// test.builtSWL();
+// let res = test.filter('fuck');
+// console.log(res);
 
-bulitSW('./sw.txt');
+
+// test 
+/**
+ * there are 1065 words and 972 words can be reconized    accuary: 91.27%
+ * filter one word use 1ms
+ * if a sentence  contains 5654 words , it will use 3ms
+ * filter 1065 sentences use 6ms
+ */
+// let data = fs.readFileSync('./sw.txt').toString().split('\r\n'),
+//     str = '';
+
+// for(let i=0, len=data.length; i<len; i++) 
+//     str += data[i];
+
+// let test = new SWF();
+// test.builtSWL();
+// // let counter = 0;
+// let start = Date.now();
+// // data.forEach((val)=>{
+// //     let res = test.filter(val);
+// //     if(res[0]!=='*')
+// //         counter++;
+// // });
+// // console.log('all: ',data.length,'| err: ', counter, '| acc: ',(data.length-counter)/data.length);
+// let res = test.filter(str);
+// let end = Date.now();
+// console.log('it spend: ',end-start,'ms');
+
+
+
+
