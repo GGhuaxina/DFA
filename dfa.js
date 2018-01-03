@@ -1,11 +1,10 @@
-let fs = require('fs');
+const fs = require('fs');
 
 // create sw hash
 let map = {};
 
 class SWF {
     constructor () {}
-
     /**
      * create tree node
      * @param {String，sensitive words} word 
@@ -27,12 +26,13 @@ class SWF {
     */
     addWord (sentences) {
         if(!sentences) return;
-        let len = sentences.length;
+        const len = sentences.length;
         sentences = sentences.toLowerCase();
     
         // init rootNode
-        let rootNode = sentences.charAt(0);
-
+        const rootNode = sentences.charAt(0);
+       
+        // just one word
         if(len===1){
             map[rootNode] = this.createTNode(rootNode,1,{});
             return ;
@@ -53,29 +53,31 @@ class SWF {
         }
     }
     builtSWL (filePath) {
-
         // if users would't built their own libs 
-        filePath === void 0 ? filePath = './sw.txt' : 1;
+        filePath === void 0 ? filePath = './sw.txt' : 1==1;
 
-        let data = fs.readFileSync(filePath);
+        const dataBuf = fs.readFileSync(filePath);
 
-        // if linux, please use next line 
-        // let datas = data.toString().split('\n');
-        let datas = data.toString().split('\r\n');
+        // Buffer convert to Array , if linux, please use next line 
+        // const datas = data.toString().split('\n');
+        const datas = dataBuf.toString().split('\r\n');
 
-        for(let w=0, len=datas.length; w<len; w++) 
-            this.addWord(datas[w]);
+        datas.forEach((val)=>{
+            this.addWord(val);
+        });
     }
    
     /**
      * filter and replace it by "*" 
-     * @param {String, your sentence} sentence 
+     * @param {String, your sentence} sentence
+     * if return -1, mean input error 
     */
     filter (sentence) {
-
         if(!sentence) return -1;
-        let len = sentence.length;
-        let m = map;
+        const len = sentence.length;
+        const m = map;
+
+        // [a-zA-Z] convert to [a-z]
         sentence = sentence.toLowerCase().split('');
     
         for(let i=0; i<len; i++) {
@@ -89,10 +91,9 @@ class SWF {
                     if(curState.nodes[nw]) {
                         // if it matches a sensitive word
                         if(curState.nodes[nw].flag === 1) {
-
+                            // replace
                             for(i;i<=j;i++)
                                 sentence[i] = '*';
-
                             // continue to judge until i equals len
                             i = j;
                             break;
