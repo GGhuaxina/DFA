@@ -1,9 +1,8 @@
 # DFA
-> example
+### e.g.
+```js
 let ts = new SWF();
-// also you can built your own libs
-// ts.builtSWL(filePath)
-ts.builtSWL();
+ts.builtSWL();   // or ts.builtSWL(filePath)
 let res = test.filter('fuckFUCK');
 console.log(res);   // '********'
-
+```
