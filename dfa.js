@@ -85,9 +85,15 @@ class SWF {
             if(m[w]) {
                 // state transition
                 let curState = m[w];
-                for(let j=i+1; j<len; ) {
+                for(let j=i+1; j<=len; ) {
                     // next word
                     let nw = sentence[j];
+                    
+                    //only one word
+                    if (curState.nodes === {}){
+                        sentence[i] = '*';
+                    }
+                    
                     if(curState.nodes[nw]) {
                         // if it matches a sensitive word
                         if(curState.nodes[nw].flag === 1) {
